@@ -2,6 +2,7 @@ package org.camunda.bpm.getstarted.springbootcamundakeycloakexample;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.identity.User;
 import org.camunda.bpm.engine.impl.identity.db.DbUserQueryImpl;
@@ -18,10 +19,7 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
 
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -77,7 +75,8 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
 
         String userId = oidcUser.getName();
         System.out.println(userId + " " + oidcUser.getEmail());
-        List<User> users = engine.getIdentityService().createUserQuery().userId(userId).list();
+        IdentityService identityService = engine.getIdentityService();
+        List<User> users = identityService.createUserQuery().userId(userId).list();
 
 
 
@@ -96,10 +95,13 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
         } else {
             log.info("User {} found in database.", userId);
         }
-        List<User> aa = engine.getIdentityService().createUserQuery().list();
+        if (identityService.createGroupQuery().groupId("camunda-admin").count() == 0) {
+            identityService.saveGroup(identityService.newGroup("camunda-admin"));
+        }
 
+        identityService.createMembership(userId, "camunda-admin");
         AuthenticationResult authenticationResult = new AuthenticationResult(userId, true);
-        authenticationResult.setGroups(getUserGroups(authentication));
+        authenticationResult.setGroups(Collections.singletonList("camunda-admin"));
 
         // Fetch and set tenant
         String tenantId = getTenantForUser(userId, engine);
@@ -111,11 +113,19 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
         return authenticationResult;
     }
 
-    private List<String> getUserGroups(Authentication authentication) {
+    /*private List<String> getUserGroups(Authentication authentication) {
         log.info("Extracting user groups...");
         return authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
+    }*/
+
+    private List<String> getUserGroups(String userId, ProcessEngine engine){
+        List<String> groupIds = new ArrayList<>();
+        // query groups using KeycloakIdentityProvider plugin
+        engine.getIdentityService().createGroupQuery().groupMember(userId).list()
+                .forEach( g -> groupIds.add(g.getId()));
+        return groupIds;
     }
 
     private List<GrantedAuthority> getUserAuthorities(AuthenticationResult authenticationResult) {
