@@ -62,7 +62,7 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
     public AuthenticationResult extractAuthenticatedUser(HttpServletRequest request, ProcessEngine engine) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !(authentication instanceof OAuth2AuthenticationToken)) {
+        if (!(authentication instanceof OAuth2AuthenticationToken)) {
             log.error("No authentication found in SecurityContextHolder.");
             return AuthenticationResult.unsuccessful();
         }
@@ -74,7 +74,6 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
         }
 
         String userId = oidcUser.getName();
-        System.out.println(userId + " " + oidcUser.getEmail());
         IdentityService identityService = engine.getIdentityService();
         List<User> users = identityService.createUserQuery().userId(userId).list();
 
@@ -98,18 +97,12 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
         if (identityService.createGroupQuery().groupId("camunda-admin").count() == 0) {
             identityService.saveGroup(identityService.newGroup("camunda-admin"));
         }
-
-        identityService.createMembership(userId, "camunda-admin");
+        if (identityService.createGroupQuery().groupId("camunda-admin").groupMember(userId).count() == 0) {
+            identityService.createMembership(userId, "camunda-admin");
+        }
         AuthenticationResult authenticationResult = new AuthenticationResult(userId, true);
         authenticationResult.setGroups(Collections.singletonList("camunda-admin"));
 
-        // Fetch and set tenant
-        String tenantId = getTenantForUser(userId, engine);
-        if (tenantId != null) {
-            authenticationResult.setTenants(Collections.singletonList(tenantId));
-        }
-
-        log.info("User {} authenticated successfully with groups {} and tenant {}", userId, authenticationResult.getGroups(), tenantId);
         return authenticationResult;
     }
 
@@ -120,13 +113,13 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
                 .collect(Collectors.toList());
     }*/
 
-    private List<String> getUserGroups(String userId, ProcessEngine engine){
+    /*private List<String> getUserGroups(String userId, ProcessEngine engine){
         List<String> groupIds = new ArrayList<>();
         // query groups using KeycloakIdentityProvider plugin
         engine.getIdentityService().createGroupQuery().groupMember(userId).list()
                 .forEach( g -> groupIds.add(g.getId()));
         return groupIds;
-    }
+    }*/
 
     private List<GrantedAuthority> getUserAuthorities(AuthenticationResult authenticationResult) {
         log.info("Converting user groups to GrantedAuthority...");
@@ -135,10 +128,10 @@ public class KeycloakAuthenticationProvider extends ContainerBasedAuthentication
                 .collect(Collectors.toList());
     }
 
-    private String getTenantForUser(String userId, ProcessEngine engine) {
+    /*private String getTenantForUser(String userId, ProcessEngine engine) {
         // Logic to fetch tenant for the user from ProcessEngine or any other source
         // This is just a placeholder implementation
         // Replace this with the actual logic to get the tenant
         return "";
-    }
+    }*/
 }
