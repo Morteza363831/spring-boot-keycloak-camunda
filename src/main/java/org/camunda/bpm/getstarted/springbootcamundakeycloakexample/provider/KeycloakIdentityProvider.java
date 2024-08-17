@@ -1,4 +1,4 @@
-package org.camunda.bpm.getstarted.springbootcamundakeycloakexample;
+package org.camunda.bpm.getstarted.springbootcamundakeycloakexample.provider;
 
 
 
