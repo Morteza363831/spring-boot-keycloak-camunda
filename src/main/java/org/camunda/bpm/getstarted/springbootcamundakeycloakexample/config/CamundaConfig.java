@@ -1,4 +1,4 @@
-package org.camunda.bpm.getstarted.springbootcamundakeycloakexample;
+package org.camunda.bpm.getstarted.springbootcamundakeycloakexample.config;
 
 import org.camunda.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.camunda.bpm.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration;
